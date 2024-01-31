@@ -4,9 +4,12 @@ version = "0.1.0"
 description = ""
 authors = ["amalaguti <adrianma78@hotmail.com>"]
 readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/amalaguti/mocky"
+repository = "https://github.com/amalaguti/mocky"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.7"
 
 
 [build-system]

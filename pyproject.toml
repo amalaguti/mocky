@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "mocky"
+name = "mockysalty"
 version = "0.1.0"
 description = ""
 authors = ["amalaguti <adrianma78@hotmail.com>"]
@@ -11,6 +11,9 @@ repository = "https://github.com/amalaguti/mocky"
 [tool.poetry.dependencies]
 python = "^3.7"
 
+
+[tool.poetry.group.dev.dependencies]
+twine = "^4.0.2"
 
 [build-system]
 requires = ["poetry-core"]

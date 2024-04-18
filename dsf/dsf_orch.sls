@@ -142,10 +142,6 @@ nap_time_logging_dsf_start:
     - name: test.sleep
     - s_time: {{ requirements_map['nap_times']['dsf_start'] }}
 
-{#-  versions allowed to be executed #}
-{%   set versions_allowed = requirements_map['versions_allowed'] %}
-{#-  versions allowed to be executed #}
-{%   set devices_allowed = requirements_map['devices_allowed'] %}
 
 {#-  Update runners if sync_runners if requirements.yaml #}
 {%   if requirements_map['sync_runners']%}
@@ -156,34 +152,7 @@ update_runners:
 
 {#- Checking received pillar data to initiate the work #}
 {%   if device and version %}
-{%     if device.upper() in devices_allowed and version in versions_allowed %}
-{%-      do salt['log.info'](">>>> DSF %s: ORCH Pillar variables check OK: %s" % (dsf_version, master_logging_file)) %}
-{%-      set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
-{%-      set logging_line = '{"TYPE": "INFO", "ACTION": "DSF_pillar_OK", "TIMESTAMP": "%s", "ID": "%s"}' %(timestamp, master_id) %}
-{{       logging_item(master_logging_file, logging_line)}}
-device_version_OK:
-  test.configurable_test_state:
-    - changes: False
-    - result: True
-    - comment: |
-        device: {{ device }}
-        version: {{ version }}
-{%     else %}
-{%-      do salt['log.error'](">>>> DSF %s: ORCH Pillar variables check FAILED: %s" % (dsf_version, master_logging_file)) %}
-{%-      set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
-{%-      set logging_line = '{"TYPE": "ERROR", "ACTION": "DSF_pillar_check_FAILED", "TIMESTAMP": "%s", "ID": "%s"}' %(timestamp, master_id) %}
-{{       logging_item(master_logging_file, logging_line)}}
-device_version_FAILED:
-  test.configurable_test_state:
-    - changes: False
-    - result: False
-    - comment: |
-        device and/or version not allowed
-        device: {{ device }} must be in {{ devices_allowed }}
-        version: {{ version }} must be in {{ versions_allowed }}
-    - failhard: True
-{# QUESTION: Should this failure trigger any action/notification ? #}
-{%     endif %}
+{%-    do salt['log.error'](">>>> DSF %s: ORCH Pillar variables check OK: %s" % (dsf_version, logging_file)) %}
 {%   else %}
 {%-    do salt['log.error'](">>>> DSF %s: ORCH Pillar variables check FAILED: %s" % (dsf_version, master_logging_file)) %}
 {%-    set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}

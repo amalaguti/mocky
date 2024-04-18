@@ -37,15 +37,15 @@
 {%-do globals.update({'exec_id': start_time}) %}
 {%-set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {#-Any better location for this file ?#}
-{%-set master_logging_file = '/var/log/salt/salt-dsf-' ~ master_id ~ '_' ~ start_time ~ '_' ~ version ~ '_' ~ device ~ '.log' %}
-{%-do globals.update({'master_logging_file': master_logging_file}) %}
+{%-set logging_file = '/tmp/salt-dsf-' ~ master_id ~ '_' ~ start_time ~ '_' ~ version ~ '_' ~ device ~ '.log' %}
+{%-do globals.update({'logging_file': logging_file}) %}
 
 {#-Bail out the orchestration if device or version are not present #}
 {% if not device or not version %}
-{%-  do salt['log.error'](">>>> DSF %s: ORCH START FAILED due device or version not present in pillar. Logging file: %s" % ('N/A', master_logging_file)) %}
+{%-  do salt['log.error'](">>>> DSF %s: ORCH START FAILED due device or version not present in pillar. Logging file: %s" % ('N/A', logging_file)) %}
 {%-  set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-  set logging_line = '{"TYPE": "ERROR", "ACTION": "ORCH START FAILED due device or version not present in pillar", "TIMESTAMP": "%s", "ID": "%s"}' %(timestamp, master_id) %}
-{{   logging_item(master_logging_file, logging_line)}}
+{{   logging_item(logging_file, logging_line)}}
 device_or_version_not_present:
   test.configurable_test_state:
     - changes: False
@@ -64,10 +64,10 @@ device_or_version_not_present:
       not salt['slsutil.file_exists'](device | path_join(version, device, 'yaml', 'requirements.yaml')) or
       not salt['slsutil.file_exists'](device | path_join(version, device, 'yaml', 'options.yaml')) 
      ) %}
-{%-  do salt['log.error'](">>>> DSF %s: ORCH START FAILED due requirements file not found, check values provided for device: %s and version: %s. Logging file: %s" % (slspath.split('/')[1], device, version, master_logging_file)) %}
+{%-  do salt['log.error'](">>>> DSF %s: ORCH START FAILED due requirements file not found, check values provided for device: %s and version: %s. Logging file: %s" % (slspath.split('/')[1], device, version, logging_file)) %}
 {%-  set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-  set logging_line = '{"TYPE": "ERROR", "ACTION": "ORCH START FAILED due required YAML files are not present, check values provided for device: %s and version: %s", "TIMESTAMP": "%s", "ID": "%s"}' %(version, device, timestamp, master_id) %}
-{{   logging_item(master_logging_file, logging_line)}}
+{{   logging_item(logging_file, logging_line)}}
 requirements_file_not_found:
   test.configurable_test_state:
     - changes: False
@@ -120,9 +120,9 @@ requirements_file_not_found:
 {% do salt['saltutil.runner']('dsf_cap.refresh_grains') %}
 
 {#-  Logging: Orch start #}
-{%-  do salt['log.info'](">>>> DSF %s: ORCH START: %s" % (dsf_version, master_logging_file)) %}
-{%-  set logging_line = '{"TITLE": "DSF Logging %s", "TIMESTAMP": "%s", "ID": "%s"}' %(master_logging_file, timestamp, master_id) %}
-{{   logging_item(master_logging_file, logging_line)}}
+{%-  do salt['log.info'](">>>> DSF %s: ORCH START: %s" % (dsf_version, logging_file)) %}
+{%-  set logging_line = '{"TITLE": "DSF Logging %s", "TIMESTAMP": "%s", "ID": "%s"}' %(logging_file, timestamp, master_id) %}
+{{   logging_item(logging_file, logging_line)}}
 event_ORCH_START:
   salt.runner:
     - name: event.send
@@ -132,7 +132,7 @@ event_ORCH_START:
         dsf_sls: {{ sls.replace('/','.') }}
         device: {{ device | default(None) }}
         version: {{ version | default(None) }}
-        master_logging_file: {{ master_logging_file | default(None) }}
+        logging_file: {{ logging_file | default(None) }}
         requirements_map: {{ requirements_map | default(None) }}
         order_map: {{ order_map | default(None) }}
 
@@ -157,10 +157,10 @@ update_runners:
 {#- Checking received pillar data to initiate the work #}
 {%   if device and version %}
 {%     if device.upper() in devices_allowed and version in versions_allowed %}
-{%-      do salt['log.info'](">>>> DSF %s: ORCH Pillar variables check OK: %s" % (dsf_version, master_logging_file)) %}
+{%-      do salt['log.info'](">>>> DSF %s: ORCH Pillar variables check OK: %s" % (dsf_version, logging_file)) %}
 {%-      set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-      set logging_line = '{"TYPE": "INFO", "ACTION": "DSF_pillar_OK", "TIMESTAMP": "%s", "ID": "%s"}' %(timestamp, master_id) %}
-{{       logging_item(master_logging_file, logging_line)}}
+{{       logging_item(logging_file, logging_line)}}
 device_version_OK:
   test.configurable_test_state:
     - changes: False
@@ -169,10 +169,10 @@ device_version_OK:
         device: {{ device }}
         version: {{ version }}
 {%     else %}
-{%-      do salt['log.error'](">>>> DSF %s: ORCH Pillar variables check FAILED: %s" % (dsf_version, master_logging_file)) %}
+{%-      do salt['log.error'](">>>> DSF %s: ORCH Pillar variables check FAILED: %s" % (dsf_version, logging_file)) %}
 {%-      set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-      set logging_line = '{"TYPE": "ERROR", "ACTION": "DSF_pillar_check_FAILED", "TIMESTAMP": "%s", "ID": "%s"}' %(timestamp, master_id) %}
-{{       logging_item(master_logging_file, logging_line)}}
+{{       logging_item(logging_file, logging_line)}}
 device_version_FAILED:
   test.configurable_test_state:
     - changes: False
@@ -185,10 +185,10 @@ device_version_FAILED:
 {# QUESTION: Should this failure trigger any action/notification ? #}
 {%     endif %}
 {%   else %}
-{%-    do salt['log.error'](">>>> DSF %s: ORCH Pillar variables check FAILED: %s" % (dsf_version, master_logging_file)) %}
+{%-    do salt['log.error'](">>>> DSF %s: ORCH Pillar variables check FAILED: %s" % (dsf_version, logging_file)) %}
 {%-    set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-    set logging_line = '{"TYPE": "ERROR", "ACTION": "DSF_pillar_missing", "TIMESTAMP": "%s", "ID": "%s"}' %(timestamp, master_id) %}
-{{     logging_item(master_logging_file, logging_line)}}
+{{     logging_item(logging_file, logging_line)}}
 device_version_FAILED:
   test.configurable_test_state:
     - changes: False
@@ -218,11 +218,11 @@ device_version_FAILED:
 {%-      do salt['log.info'](">>>> DSF %s: ORCH Using requirements map" % (dsf_version)) %}
 {%-      set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-      set logging_line = '{"TYPE": "INFO", "ACTION": "DSF_requirements_usage_True", "TIMESTAMP": "%s", "ID": "%s"}' %(timestamp, master_id) %}
-{{       logging_item(master_logging_file, logging_line)}}
+{{       logging_item(logging_file, logging_line)}}
 {%       if 'custom_requirements' in pillar %}
 {%-        set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-        set logging_line = '{"TYPE": "INFO", "ACTION": "DSF_requirements_using_custom_requirements", "TIMESTAMP": "%s", "ID": "%s"}' %(timestamp, master_id) %}
-{{         logging_item(master_logging_file, logging_line)}}
+{{         logging_item(logging_file, logging_line)}}
 {%-      endif %}
 
 
@@ -267,7 +267,7 @@ REQUIREMENTS_USE_TRUE:
 {%-      do salt['log.warning'](">>>> DSF %s: ORCH NOT Using requirements map" % (dsf_version)) %}
 {%-      set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-      set logging_line = '{"TYPE": "WARNING", "ACTION": "DSF_requirements_usage_False", "TIMESTAMP": "%s", "ID": "%s"}' %(timestamp, master_id) %}
-{{       logging_item(master_logging_file, logging_line)}}
+{{       logging_item(logging_file, logging_line)}}
 REQUIREMENTS_USE_FALSE:
   test.configurable_test_state:
     - changes: False
@@ -282,14 +282,14 @@ REQUIREMENTS_USE_FALSE:
 {%-    do salt['log.info'](">>>> DSF %s: ORCH Setting up order: %s" % (dsf_version,order_map[device])) %}
 {%-    set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-    set logging_line = '{"TYPE": "INFO", "ACTION": "DSF_set_order %s", "TIMESTAMP": "%s", "ID": "%s"}' %(order_map[device],timestamp,master_id) %}
-{{     logging_item(master_logging_file, logging_line)}}
+{{     logging_item(logging_file, logging_line)}}
 
 {#-    Define expected target devices to execute the update on #}
 {%     set expected_devices = salt['saltutil.runner']('dsf_cap.expected_devices',  tgts=order_map[device]) %}
 {%-    do salt['log.info'](">>>> DSF %s: ORCH expected_devices: %s" % (dsf_version, expected_devices)) %}
 {%-    set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-    set logging_line = '{"TYPE": "INFO", "ACTION": "DSF_expected_devices %s", "TIMESTAMP": "%s", "ID": "%s"}' %(expected_devices,timestamp,master_id) %}
-{{     logging_item(master_logging_file, logging_line)}}
+{{     logging_item(logging_file, logging_line)}}
 
 {#-    Set approval payload #}
 {%-    set now = None | strftime("%Y-%m-%d %H:%M:%S") -%}
@@ -297,7 +297,7 @@ REQUIREMENTS_USE_FALSE:
 {%-    do update_payload.update({'device': device}) %}
 {%-    do update_payload.update({'version': version}) %}
 {%-    do update_payload.update({'order': order[device]}) %}
-{%-    do update_payload.update({'internal': {'orch_info': {'logging_file': master_logging_file, 'update_request': orch_info_update_request, 'master_id': master_id, 'exec_id': globals.get('exec_id', None)}}}) %}
+{%-    do update_payload.update({'internal': {'orch_info': {'logging_file': logging_file, 'update_request': orch_info_update_request, 'master_id': master_id, 'exec_id': globals.get('exec_id', None)}}}) %}
 {%-    do globals.update({'updates_file': requirements_map['updates_file']}) %}
 {%-    do update_payload.update({'updates_file': globals.get('updates_file', None)}) %}
 {%-    do update_payload.update({'update_content': requirements_map['update_content']}) %}
@@ -343,7 +343,7 @@ update_device_status_{{ device_id }}:
         dsf_version=dsf_version,
         version=version,
         master_id=master_id,
-        master_logging_file=globals.get('master_logging_file', None),
+        logging_file=globals.get('logging_file', None),
         update_id=globals.get('update_id', None),
         logging_filepath=globals.get('logging_filepath', None),
         exec_id=globals.get('exec_id', None),
@@ -368,7 +368,7 @@ update_device_status_{{ device_id }}:
         dsf_version=dsf_version,
         version=version,
         master_id=master_id,
-        master_logging_file=globals.get('master_logging_file', None),
+        logging_file=globals.get('logging_file', None),
         update_id=globals.get('update_id', None),
         logging_filepath=globals.get('logging_filepath', None),
         exec_id=globals.get('exec_id', None),
@@ -404,7 +404,7 @@ update_device_status_{{ device_id }}:
 {%-          do salt['log.info'](">>>> DSF %s: ORCH Setting up tgt_type for requirements execution: %s" % (dsf_version, tgt_type)) %}
 {%-          set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-          set logging_line = '{"TYPE": "INFO", "ACTION": "DSF set_tgt_type for requirements execution: %s", "TIMESTAMP": "%s", "ID": "%s"}' %(tgt_type,timestamp,master_id) %}
-{{           logging_item(master_logging_file, logging_line)}}
+{{           logging_item(logging_file, logging_line)}}
 
 {#-          For each tgt, execute the states as listed in requirements_map['states'] #}
 {%           for _state in requirements_map['states'] %}
@@ -423,7 +423,7 @@ update_device_status_{{ device_id }}:
 {%-              set requirement_state_name = tgt_loop.index ~ '_' ~ state ~ '_' ~ device_id ~ '__' ~ salt['test.random_hash']()[-6:] %}
 {%-              set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-              set logging_line = '{"TYPE": "INFO", "ACTION": "ORCH - REQUEST APPROVAL - Running requirement state %s (%s) (%s) on %s", "TIMESTAMP": "%s", "ID": "%s"}' %(state,requirement_sls,requirement_state_name,tgt,timestamp,master_id) %}
-{{               logging_item(master_logging_file, logging_line)}}
+{{               logging_item(logging_file, logging_line)}}
 {%               if execute_state %}
 requirement_{{ requirement_state_name }}:
   salt.state:
@@ -451,10 +451,10 @@ requirement_{{ requirement_state_name }}:
 {%               endif %}
 {{               logging_salt(type='info', message=">>>> DSF {version}: ORCH - REQUEST APPROVAL - Requirement executed {state} ({sls}) on {tgt}".format(version=dsf_version,state=state,sls=requirement_sls,tgt=tgt),require_state='requirement_'~requirement_state_name) }}
 {%-              set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
-{{               check_state(cap_category=cap_category,device=device,type='requirement',state=requirement_state_name,tgt=tgt,state_sls=requirement_sls,dsf_version=dsf_version,version=version,master_logging_file=master_logging_file,timestamp=timestamp,master_id=master_id,track_progress=False,update_actions_updates_file=False,update_payload=update_payload,device_id=device_id,approval_tgt=approval_tgt,approval_tgt_type=globals.get('approval_tgt_type', 'glob'),update_id=requirements_map['update_content']['ID'],updates_file=requirements_map['updates_file'][approval_tgt_os],exec_id=globals.get('exec_id', None),caller=globals.get('approval_tgt', None),data_store_clean_up=globals.get('requirements_map', {}).get('data_store_clean_up', {})) }}
+{{               check_state(cap_category=cap_category,device=device,type='requirement',state=requirement_state_name,tgt=tgt,state_sls=requirement_sls,dsf_version=dsf_version,version=version,logging_file=logging_file,timestamp=timestamp,master_id=master_id,track_progress=False,update_actions_updates_file=False,update_payload=update_payload,device_id=device_id,approval_tgt=approval_tgt,approval_tgt_type=globals.get('approval_tgt_type', 'glob'),update_id=requirements_map['update_content']['ID'],updates_file=requirements_map['updates_file'][approval_tgt_os],exec_id=globals.get('exec_id', None),caller=globals.get('approval_tgt', None),data_store_clean_up=globals.get('requirements_map', {}).get('data_store_clean_up', {})) }}
 {%-              set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-              set logging_line = '{"TYPE": "INFO", "ACTION": "ORCH - REQUEST APPROVAL - Requirement executed: %s (%s) (%s) on %s", "TIMESTAMP": "%s", "ID": "%s"}' %(state,requirement_sls,requirement_state_name,tgt,timestamp,master_id) %}
-{{               logging_item(master_logging_file, logging_line)}}
+{{               logging_item(logging_file, logging_line)}}
 {{              nap_time(requirements_map['nap_times']['states_execution']) }}
 {%             endfor %}
 {%           endfor %}
@@ -497,7 +497,7 @@ in case of failure orchestration will not continue further #}
 {#-    Update man_dsp_pending_ver #}
 {%     if requirements_map.get('set_man_dsp_pending_ver', True) %}
 {%-      from slspath ~ '/' ~ dsf_utils_folder ~ '/dsf_macros_grains.sls' import man_dsp_pending_ver with context %}
-{{       man_dsp_pending_ver(cap_category=cap_category,tgt=tgt,tgt_type=tgt_type,dsf_version=dsf_version,version=version,master_id=master_id,master_logging_file=master_logging_file,caller=globals.get('approval_tgt', None),update_id=requirements_map['update_content']['ID'],logging_filepath=logging_filepath,track_progress=False,update_actions_updates_file=False,exec_id=globals.get('exec_id', None)) }}
+{{       man_dsp_pending_ver(cap_category=cap_category,tgt=tgt,tgt_type=tgt_type,dsf_version=dsf_version,version=version,master_id=master_id,logging_file=logging_file,caller=globals.get('approval_tgt', None),update_id=requirements_map['update_content']['ID'],logging_filepath=logging_filepath,track_progress=False,update_actions_updates_file=False,exec_id=globals.get('exec_id', None)) }}
 {%     endif %}
 
 {%   endfor %}
@@ -538,7 +538,7 @@ set_update_avaiable_for_{{ _device }}:
         dsf_version=dsf_version,
         version=version,
         master_id=master_id,
-        master_logging_file=globals.get('master_logging_file', None),
+        logging_file=globals.get('logging_file', None),
         update_id=globals.get('update_id', None),
         logging_filepath=globals.get('logging_filepath', None),
         exec_id=globals.get('exec_id', None),
@@ -562,7 +562,7 @@ event_ORCH_FINISHED:
         dsf_sls: {{ sls.replace('/','.') }}
         device: {{ device | default(None) }}
         version: {{ version | default(None) }}
-        master_logging_file: {{ master_logging_file | default(None) }}
+        logging_file: {{ logging_file | default(None) }}
         update_id: {{ globals.get('update_id', None) }}
         exec_id: {{ globals.get('exec_id', None) }} 
         exec_status: __slot__:salt:saltutil.runner(dsf_cap.device_status_check,update_id={{ globals.get('update_id', None) }},exec_id={{ globals.get('exec_id', None) }})
@@ -587,7 +587,7 @@ ORCHESTRATION_FINISHED_detailed_report:
 {{   logging_salt(type='info', message=">>>> DSF {version}: ORCH - REQUEST APPROVAL - Orchestration FINISHED".format(version=dsf_version,),require_state='test: ORCHESTRATION_FINISHED') }}
 {%-  set timestamp = None | strftime("%Y-%m-%dT%H:%M:%S.%f") -%}
 {%-  set logging_line = '{"TYPE": "INFO", "ACTION": "ORCH - REQUEST APPROVAL - Orchestration FINISHED", "TIMESTAMP": "%s", "ID": "%s"}' %(timestamp, master_id) %}
-{{   logging_item(master_logging_file, logging_line)}}
+{{   logging_item(logging_file, logging_line)}}
     - require:
       - test: ORCHESTRATION_FINISHED
 
@@ -614,6 +614,6 @@ clean_up_data_store_{{ globals.get('exec_id', None) }}_on_failed:
 {# OPTIONAL - Automated update execution #}
 {%   if salt['slsutil.file_exists']([device, version, device, 'yaml', 'autoexec.yaml'] | join('/')) %}
 {%-    from slspath ~ '/' ~ dsf_utils_folder ~ '/dsf_macros_autoexec.sls' import  autoexec_update_execute with context %}
-{{     autoexec_update_execute(cap_category=cap_category,dsf_version=dsf_version,version=version,master_id=master_id,master_logging_file=master_logging_file,updates_file=requirements_map['updates_file'],update_id=update_payload['update_content']['ID'],exec_id=globals.get('exec_id', None),update_status=globals.get('update_status', None)) }}
+{{     autoexec_update_execute(cap_category=cap_category,dsf_version=dsf_version,version=version,master_id=master_id,logging_file=logging_file,updates_file=requirements_map['updates_file'],update_id=update_payload['update_content']['ID'],exec_id=globals.get('exec_id', None),update_status=globals.get('update_status', None)) }}
 {%   endif %}
 {% endif %}
